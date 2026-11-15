@@ -4,10 +4,12 @@ public sealed class CharacterBuild
 {
     public SpeciesSelection Species {get; private set; }
     public BackgroundSelection Background {get; private set; }
+    public CharacterProgression Progression {get; }
 
     public CharacterBuild(
             SpeciesSelection species,
-            BackgroundSelection background
+            BackgroundSelection background,
+            CharacterProgression progression
         )
     {
         Species = species
@@ -15,6 +17,8 @@ public sealed class CharacterBuild
 
         Background = background
             ?? throw new ArgumentNullException(nameof(background));
+        Progression = progression
+            ?? throw new ArgumentNullException(nameof(progression));
     }
 
     public void ChangeSpecies(SpeciesSelection species)
