@@ -1,0 +1,35 @@
+
+# .NET build artifacts
+**/bin/
+**/obj/
+
+# IDE files
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+
+# User-specific files
+*.user
+*.suo
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# Local secrets
+.env
+.env.*
+secrets.json
+appsettings.Development.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test results
+TestResults/
+coverage/

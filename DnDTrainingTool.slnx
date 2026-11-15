@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DnDTrainingTool.Application/DnDTrainingTool.Application.csproj" />
+    <Project Path="src/DnDTrainingTool.Desktop/DnDTrainingTool.Desktop.csproj" />
+    <Project Path="src/DnDTrainingTool.Domain/DnDTrainingTool.Domain.csproj" />
+    <Project Path="src/DnDTrainingTool.Infrastructure/DnDTrainingTool.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DnDTrainingTool.Tests/DnDTrainingTool.Tests.csproj" />
+  </Folder>
+</Solution>

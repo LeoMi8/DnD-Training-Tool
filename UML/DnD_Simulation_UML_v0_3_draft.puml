@@ -1,0 +1,170 @@
+@startuml DnD_Simulation_v0_3_draft
+' Simulation v0.3 — runtime owner and decision orchestration
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+left to right direction
+
+package "Simulation — session and scenario" {
+  class SimulationScenario {
+    +Id: Guid
+    +Name: string
+    +RulesetId: string
+  }
+  class ScenarioParticipantSetup {
+    +CreatureSourceId: Guid
+    +InitialPlacement: Position
+  }
+  class ScenarioAreaSetup {
+    +AreaId: Guid
+  }
+  class SimulationSession {
+    +Id: Guid
+    +Status: SimulationStatus
+    +Start(): void
+    +Pause(): void
+    +Resume(): void
+    +Finish(): void
+    +Restart(): void
+  }
+  enum SimulationStatus {
+    Configured
+    Running
+    Paused
+    Finished
+  }
+  class SimulationState {
+    +Revision: long
+    +Phase: SimulationPhase
+  }
+  enum SimulationPhase {
+    Exploration
+    Social
+    Combat
+    Review
+  }
+  SimulationScenario "1" *-- "0..*" ScenarioParticipantSetup
+  SimulationScenario "1" *-- "0..*" ScenarioAreaSetup
+  SimulationSession --> SimulationScenario : instantiated from
+  SimulationSession "1" *-- "1" SimulationState
+  SimulationSession --> SimulationStatus
+  SimulationState --> SimulationPhase
+}
+
+package "Simulation — participants and control" {
+  class SimulationParticipant {
+    +Id: Guid
+    +InstanceId: Guid
+  }
+  interface ICreatureController {
+    +Choose(context: DecisionContext): DecisionRequest
+  }
+  class HumanController
+  class AIController
+  class ScriptedController
+  class DecisionContext {
+    +ParticipantId: Guid
+    +AllowedOptions: List<ContentId>
+  }
+  class DecisionRequest {
+    +ParticipantId: Guid
+    +ActionId: ContentId
+  }
+  class ControlAssignment {
+    +ParticipantId: Guid
+    +ControllerId: Guid
+  }
+  ICreatureController <|.. HumanController
+  ICreatureController <|.. AIController
+  ICreatureController <|.. ScriptedController
+  SimulationState "1" *-- "0..*" SimulationParticipant
+  SimulationSession "1" *-- "0..*" ControlAssignment
+  ControlAssignment --> ICreatureController : selects
+  ControlAssignment --> SimulationParticipant : target
+  ICreatureController ..> DecisionContext
+  ICreatureController ..> DecisionRequest
+}
+
+package "Simulation — transitions and history" {
+  interface IStateChangeApplier {
+    +ApplyAtomically(changes: List<StateChange>, expectedRevision: long): CommitResult
+  }
+  class StateChangeApplier
+  class CommitResult {
+    +Applied: bool
+    +NewRevision: long
+    +FailureReason: string
+  }
+  class SimulationEvent {
+    +Id: Guid
+    +Sequence: long
+    +Kind: string
+  }
+  class SimulationHistory {
+    +GetEvents(): List<SimulationEvent>
+  }
+  class SimulationSnapshot {
+    +StateRevision: long
+  }
+  class SimulationResult {
+    +SessionId: Guid
+    +Outcome: string
+  }
+  class SimulationCoordinator {
+    +Dispatch(request: DecisionRequest): CommitResult
+  }
+  IStateChangeApplier <|.. StateChangeApplier
+  StateChangeApplier ..> SimulationState : owns mutation boundary
+  StateChangeApplier ..> CommitResult
+  SimulationSession "1" *-- "1" SimulationHistory
+  SimulationHistory "1" *-- "0..*" SimulationEvent
+  SimulationSnapshot --> SimulationState : deep serialized state
+  SimulationResult ..> SimulationHistory : evidence
+  SimulationCoordinator --> SimulationSession
+  SimulationCoordinator --> IStateChangeApplier
+}
+
+package "External contracts" {
+  class CreatureInstance
+  class CreatureSnapshot
+  class CreatureState
+  class Encounter
+  class GameArea
+  class SceneState
+  class RulesEngine
+  class CombatActionCoordinator
+  class RuleOutcome
+  class StateChange <<immutable>>
+  class ContentId <<value object>>
+  class Position <<value object>>
+}
+SimulationParticipant "1" --> "1" CreatureInstance : runtime creature
+SimulationState "1" *-- "0..*" CreatureInstance
+SimulationState "1" *-- "0..*" SceneState
+SimulationState "1" *-- "0..*" Encounter : active or saved encounters
+SimulationScenario --> GameArea : references map/area definitions
+SimulationCoordinator --> CombatActionCoordinator : combat decisions
+SimulationCoordinator --> RulesEngine : exploration/social checks
+SimulationCoordinator ..> RuleOutcome : evaluate before commit
+StateChangeApplier ..> StateChange : applies validated transitions
+CreatureInstance *-- CreatureSnapshot
+CreatureInstance *-- CreatureState
+note bottom of SimulationState
+  Single authoritative runtime state for creature conditions,
+  resources, scene placement and encounter participation.
+  Combatant references a SimulationParticipant; never duplicates HP.
+end note
+note bottom of SimulationCoordinator
+  Controllers propose choices; Rules validates them.
+  Do not trust AI-generated or scripted commands as legal.
+  Failed validation must leave SimulationState unchanged.
+end note
+note bottom of SimulationSnapshot
+  Snapshots are immutable/deep copies. Persistent character
+  sheets are not modified without an explicit user operation.
+end note
+note bottom of IStateChangeApplier
+  Commit requires version check and atomic application; emit
+  history events only after a successful commit.
+end note
+@enduml

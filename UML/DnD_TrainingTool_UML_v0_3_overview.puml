@@ -1,0 +1,134 @@
+@startuml DnD_TrainingTool_v0_3_Overview
+' High-level dependency/ownership model — overview, not all class declarations
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+left to right direction
+
+package "Desktop (Avalonia)" {
+ class MainViewModel
+ class CharacterEditorViewModel
+ class SimulationViewModel
+}
+package "Application" {
+ class CharacterApplicationService
+ class SimulationApplicationService
+ interface ICharacterRepository
+ interface ISimulationSaveRepository
+}
+package "Characters" {
+ abstract class CreatureSheet
+ class PlayerCharacter
+ class NonPlayerCharacter
+ class CharacterBuild
+ class CreatureBaseStatistics
+ class CreatureSnapshot
+ class CreatureInstance
+ class CreatureState
+ CreatureSheet <|-- PlayerCharacter
+ CreatureSheet <|-- NonPlayerCharacter
+ CreatureSheet *-- CreatureBaseStatistics
+ PlayerCharacter *-- CharacterBuild
+ CreatureInstance *-- CreatureSnapshot
+ CreatureInstance *-- CreatureState
+}
+package "Content" {
+ class ContentPack
+ abstract class ContentDefinition
+ class GrantDefinition
+ abstract class EffectDefinition
+ class NpcStatBlockDefinition
+ ContentPack o-- ContentDefinition
+ ContentDefinition ..> GrantDefinition
+ GrantDefinition ..> EffectDefinition
+}
+package "Rules" {
+ class RulesEngine
+ class RuleOutcome
+ class StateChange
+ class StatResolver
+ class EffectResolver
+ RulesEngine --> StatResolver
+ RulesEngine --> EffectResolver
+ RulesEngine --> RuleOutcome
+ RuleOutcome *-- StateChange
+}
+package "World" {
+ class GameArea
+ class GameMap
+ class SceneState
+ interface ISpatialRules
+ class SquareGridRules
+ class HexGridRules
+ class GridlessRules
+ GameArea o-- GameMap
+ ISpatialRules <|.. SquareGridRules
+ ISpatialRules <|.. HexGridRules
+ ISpatialRules <|.. GridlessRules
+}
+package "Combat" {
+ class Encounter
+ class Combatant
+ class TurnManager
+ class ReactionCoordinator
+ class CombatActionCoordinator
+ Encounter *-- Combatant
+ Encounter --> TurnManager
+ CombatActionCoordinator --> ReactionCoordinator
+}
+package "Simulation" {
+ class SimulationSession
+ class SimulationScenario
+ class SimulationState
+ class SimulationParticipant
+ interface ICreatureController
+ interface IStateChangeApplier
+ SimulationSession --> SimulationScenario
+ SimulationSession *-- SimulationState
+ SimulationState *-- SimulationParticipant
+ SimulationParticipant --> ICreatureController
+}
+package "Training" {
+ class TrainingModule
+ class TrainingExercise
+ class TrainingAttempt
+ interface IAssessmentStrategy
+ TrainingModule *-- TrainingExercise
+ TrainingAttempt --> TrainingExercise
+ TrainingAttempt --> IAssessmentStrategy
+}
+package "Persistence (adapters)" {
+ class SqliteCharacterRepository
+ class SqliteSimulationSaveRepository
+ class JsonContentPackStore
+ SqliteCharacterRepository ..|> ICharacterRepository
+ SqliteSimulationSaveRepository ..|> ISimulationSaveRepository
+}
+MainViewModel --> CharacterApplicationService
+CharacterEditorViewModel --> CharacterApplicationService
+SimulationViewModel --> SimulationApplicationService
+CharacterApplicationService --> CreatureSheet
+CharacterApplicationService --> ICharacterRepository
+SimulationApplicationService --> SimulationSession
+SimulationApplicationService --> ISimulationSaveRepository
+CreatureSheet ..> ContentDefinition : references IDs
+RulesEngine ..> CreatureSnapshot : reads
+RulesEngine ..> EffectDefinition : interprets
+CombatActionCoordinator --> RulesEngine : evaluates
+CombatActionCoordinator --> IStateChangeApplier : commits
+CombatActionCoordinator --> ISpatialRules : movement geometry
+Combatant --> SimulationParticipant : references
+SimulationState *-- CreatureInstance : owns runtime copies
+SimulationState *-- SceneState
+SimulationSession --> Encounter : hosts
+TrainingAttempt --> SimulationSession : optional exercise run
+JsonContentPackStore --> ContentPack
+note bottom of SimulationState
+  The authoritative mutable state of one simulation.
+  Saved CreatureSheet remains isolated from runtime modifications.
+end note
+note bottom of IStateChangeApplier
+  Applies a validated RuleOutcome atomically and only once.
+  RulesEngine itself evaluates without mutating state.
+end note
+@enduml

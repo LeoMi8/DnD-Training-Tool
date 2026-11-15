@@ -1,0 +1,267 @@
+@startuml DnD_Rules_v0_3_draft
+' Reconciled with Characters v0.3 and Content v0.3, 14 Nov 2026.
+' Conceptual UML: contracts, associations, and workflows; not an implementation-ready API.
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+hide empty methods
+left to right direction
+
+package "Rules — entry points" {
+  class RulesEngine {
+    +Evaluate(command: RuleCommand, context: RuleContext): RuleOutcome
+  }
+  abstract class RuleCommand {
+    +CommandId: Guid
+    +ActorInstanceId: Guid
+  }
+  class CheckCommand {
+    +AbilityKey: string
+    +SkillId: ContentId [0..1]
+    +DifficultyClass: int [0..1]
+  }
+  class UseActionCommand {
+    +ActionId: ContentId
+    +TargetInstanceIds: List<Guid>
+  }
+  class ApplyEffectCommand {
+    +EffectId: ContentId
+  }
+  class RuleContext {
+    +RulesetId: string
+    +ActorInstanceId: Guid
+    +TargetInstanceIds: List<Guid>
+    +SituationTags: Set<string>
+  }
+  class RuleOutcome {
+    +IsValid: bool
+    +Succeeded: bool [0..1]
+    +ReasonCodes: List<string>
+  }
+  class RuleExplanation {
+    +RuleKey: string
+    +Description: string
+  }
+  class StateChange {
+    <<immutable>>
+    +TargetInstanceId: Guid
+    +ChangeType: string
+  }
+  class RuleQueryResult {
+    +Value: decimal
+  }
+  RuleCommand <|-- CheckCommand
+  RuleCommand <|-- UseActionCommand
+  RuleCommand <|-- ApplyEffectCommand
+  RulesEngine ..> RuleCommand
+  RulesEngine ..> RuleContext
+  RulesEngine ..> RuleOutcome
+  RuleOutcome "1" *-- "0..*" StateChange : proposed changes
+  RuleOutcome "1" *-- "0..*" RuleExplanation : audit trail
+}
+
+package "Rules — execution pipeline" {
+  interface ICommandValidator {
+    +Validate(command: RuleCommand, context: RuleContext): ValidationResult
+  }
+  class ValidationResult {
+    +IsValid: bool
+    +ReasonCodes: List<string>
+  }
+  class RequirementEvaluator {
+    +Evaluate(requirement: RequirementDefinition, context: RuleContext): bool
+  }
+  class GrantResolver {
+    +ResolveGrants(snapshot: CreatureSnapshot): ResolvedGrants
+  }
+  class ResolvedGrants
+  class ActionResolver {
+    +Resolve(command: UseActionCommand, context: RuleContext): RuleOutcome
+  }
+  class EffectResolver {
+    +Evaluate(effects: List<EffectDefinition>, context: RuleContext): EffectResult
+  }
+  class EffectResult
+  class TriggerResolver {
+    +CollectTriggeredEffects(context: RuleContext): List<EffectDefinition>
+  }
+  RulesEngine --> ICommandValidator
+  RulesEngine --> ActionResolver
+  RulesEngine --> RequirementEvaluator
+  ActionResolver --> EffectResolver
+  ActionResolver --> TriggerResolver
+  EffectResolver ..> EffectResult
+  EffectResult "1" *-- "0..*" StateChange
+  EffectResult "1" *-- "0..*" RuleExplanation
+  GrantResolver ..> ResolvedGrants
+  ICommandValidator ..> ValidationResult
+}
+
+package "Rules — dice and checks" {
+  interface IDiceRoller {
+    +Roll(expression: string): DiceResult
+  }
+  class DiceResult {
+    +Total: int
+    +IndividualRolls: List<int>
+  }
+  class CheckResolver {
+    +Resolve(command: CheckCommand, context: RuleContext): CheckResult
+  }
+  class CheckResult {
+    +Total: int
+    +Success: bool [0..1]
+  }
+  class RollMode {
+    <<enumeration>>
+    Normal
+    Advantage
+    Disadvantage
+  }
+  class RollModeResolver {
+    +Determine(context: RuleContext): RollMode
+  }
+  CheckResolver --> IDiceRoller
+  CheckResolver --> RollModeResolver
+  CheckResolver --> ModifierResolver
+  CheckResolver ..> CheckResult
+  CheckResult --> DiceResult
+  RollModeResolver --> RollMode
+  RulesEngine --> CheckResolver
+}
+
+package "Rules — statistics and modifiers" {
+  class StatResolver {
+    +Resolve(statKey: string, context: RuleContext): StatCalculationResult
+  }
+  class StatCalculationResult {
+    +StatKey: string
+    +Value: decimal
+  }
+  class ModifierResolver {
+    +Resolve(baseValue: decimal, modifiers: List<ResolvedModifier>): StatCalculationResult
+  }
+  class ResolvedModifier {
+    +StatKey: string
+    +Value: decimal
+    +SourceId: string
+  }
+  interface IModifierStackingPolicy {
+    +Combine(modifiers: List<ResolvedModifier>): List<ResolvedModifier>
+  }
+  class ModifierApplicabilityResolver {
+    +IsApplicable(effect: NumericModifierEffect, context: RuleContext): bool
+  }
+  StatResolver --> GrantResolver
+  StatResolver --> ModifierResolver
+  ModifierResolver --> IModifierStackingPolicy
+  ModifierResolver --> ModifierApplicabilityResolver
+  ModifierResolver ..> ResolvedModifier
+  ModifierResolver ..> StatCalculationResult
+  ResolvedModifier ..> NumericModifierEffect : resolved from
+  StatCalculationResult "1" *-- "0..*" RuleExplanation
+}
+
+package "Rules — damage, healing, conditions, resources" {
+  class DamageResolver {
+    +Resolve(effect: DamageEffectDefinition, context: RuleContext): EffectResult
+  }
+  class HealingResolver {
+    +Resolve(effect: HealingEffectDefinition, context: RuleContext): EffectResult
+  }
+  class ConditionResolver {
+    +Resolve(effect: ConditionEffectDefinition, context: RuleContext): EffectResult
+  }
+  class ResourceResolver {
+    +ResolveCost(cost: ResourceCost, context: RuleContext): EffectResult
+  }
+  class DurationResolver {
+    +ShouldExpire(effect: ActiveEffect, context: RuleContext): bool
+  }
+  EffectResolver --> DamageResolver
+  EffectResolver --> HealingResolver
+  EffectResolver --> ConditionResolver
+  EffectResolver --> ResourceResolver
+  EffectResolver --> DurationResolver
+  DamageResolver ..> EffectResult
+  HealingResolver ..> EffectResult
+  ConditionResolver ..> EffectResult
+  ResourceResolver ..> EffectResult
+}
+
+package "Content — declarative definitions (external)" {
+  class ContentId <<value object>>
+  class GrantDefinition
+  abstract class EffectDefinition
+  class NumericModifierEffect
+  class DamageEffectDefinition
+  class HealingEffectDefinition
+  class ConditionEffectDefinition
+  class ResourceEffectDefinition
+  class RequirementDefinition
+  class ResourceCost
+  class ActionDefinition
+  interface IContentRegistry
+  EffectDefinition <|-- NumericModifierEffect
+  EffectDefinition <|-- DamageEffectDefinition
+  EffectDefinition <|-- HealingEffectDefinition
+  EffectDefinition <|-- ConditionEffectDefinition
+  EffectDefinition <|-- ResourceEffectDefinition
+}
+package "Characters — read-only input (external)" {
+  class CreatureSnapshot
+  class CreatureBaseStatistics
+  class CreatureState
+  class ActiveEffect
+}
+package "Simulation — state owner (external)" {
+  class SimulationState
+  class SimulationSession
+  interface IStateChangeApplier {
+    +Apply(changes: List<StateChange>, state: SimulationState): void
+  }
+  IStateChangeApplier ..> StateChange
+}
+
+RequirementEvaluator ..> RequirementDefinition
+GrantResolver ..> GrantDefinition
+ActionResolver ..> ActionDefinition
+EffectResolver ..> EffectDefinition
+ResourceResolver ..> ResourceCost
+DurationResolver ..> ActiveEffect
+RuleContext ..> CreatureSnapshot : read-only actor/targets
+RuleContext ..> CreatureState : read-only current state
+StatResolver ..> CreatureBaseStatistics
+RulesEngine ..> IContentRegistry
+SimulationSession ..> RulesEngine : evaluate
+SimulationSession ..> IStateChangeApplier : commit valid changes
+
+note bottom of RulesEngine
+  One orchestrator, not one giant class of rule logic.
+  Pure evaluation: does not mutate creature data or combat state.
+  Command validation precedes roll, cost and effect resolution.
+end note
+note bottom of StateChange
+  Represents a proposed domain transition (HP, resource,
+  condition, effect, etc.). The session owns the commit.
+  Validate and apply transitions atomically to avoid partial
+  updates. A failed or invalid action must not consume resources.
+end note
+note bottom of IModifierStackingPolicy
+  Stack order, duplicates, exceptions and replacement are
+  rule-set-specific; never assume all numeric bonuses add.
+end note
+note bottom of IDiceRoller
+  Injected source of randomness permits deterministic tests
+  and reproducible training attempts when required.
+end note
+note bottom of TriggerResolver
+  Trigger windows, reactions and interrupts are orchestrated
+  with Combat/Simulation. Guard against recursive trigger loops.
+end note
+note bottom of EffectDefinition
+  Content supplies declarative effect data; Rules interprets it.
+  Complex spells may need typed specialized rule handlers.
+  No arbitrary executable code from untrusted content packs.
+end note
+@enduml

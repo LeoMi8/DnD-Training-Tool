@@ -1,0 +1,146 @@
+@startuml DnD_Persistence_v0_3_draft
+' Persistence v0.3 — ports, adapters, formats, versioning
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+left to right direction
+
+package "Application — storage ports" {
+  interface ICharacterRepository {
+    +Load(id: Guid): CreatureSheet
+    +Save(sheet: CreatureSheet): void
+  }
+  interface IScenarioRepository {
+    +Load(id: Guid): SimulationScenario
+    +Save(scenario: SimulationScenario): void
+  }
+  interface ISimulationSaveRepository {
+    +Load(id: Guid): SimulationSave
+    +Save(save: SimulationSave): void
+  }
+  interface ITrainingProgressRepository {
+    +Load(learnerId: Guid): LearnerProgress
+    +Save(progress: LearnerProgress): void
+  }
+  interface ISettingsRepository {
+    +Load(): UserSettings
+    +Save(settings: UserSettings): void
+  }
+  interface IContentPackStore {
+    +LoadManifest(packId: string): ContentManifest
+    +LoadPack(packId: string): ContentPack
+  }
+}
+
+package "Persistence — adapters" {
+  class SqliteCharacterRepository
+  class JsonCharacterRepository
+  class JsonScenarioRepository
+  class SqliteScenarioRepository
+  class SqliteSimulationSaveRepository
+  class SqliteTrainingProgressRepository
+  class JsonSettingsRepository
+  class JsonContentPackStore
+  SqliteCharacterRepository ..|> ICharacterRepository
+  JsonCharacterRepository ..|> ICharacterRepository
+  JsonScenarioRepository ..|> IScenarioRepository
+  SqliteScenarioRepository ..|> IScenarioRepository
+  SqliteSimulationSaveRepository ..|> ISimulationSaveRepository
+  SqliteTrainingProgressRepository ..|> ITrainingProgressRepository
+  JsonSettingsRepository ..|> ISettingsRepository
+  JsonContentPackStore ..|> IContentPackStore
+}
+
+package "Persistence — save data transfer" {
+  class SimulationSave {
+    +SessionId: Guid
+    +Snapshot: SimulationSnapshot
+    +EventCursor: long
+  }
+  class SaveEnvelope {
+    +SchemaVersion: string
+    +RulesetId: string
+    +SavedAt: DateTimeOffset
+    +ContentPackLock: ContentPackLock
+  }
+  class ContentPackLock {
+    +Entries: List<ContentPackVersion>
+  }
+  class ContentPackVersion {
+    +PackId: string
+    +Version: string
+    +Hash: string
+  }
+  class UserSettings {
+    +Language: string
+    +PreferredMapMode: string
+  }
+  class StoredEvent {
+    +Sequence: long
+    +Payload: string
+  }
+  SaveEnvelope "1" *-- "1" ContentPackLock
+  ContentPackLock "1" *-- "0..*" ContentPackVersion
+  SimulationSave "1" *-- "0..*" StoredEvent
+  ISimulationSaveRepository ..> SaveEnvelope
+}
+
+package "Persistence — serialization and migrations" {
+  interface IDataSerializer {
+    +Serialize(value): byte[]
+    +Deserialize(data: byte[]): object
+  }
+  class JsonDataSerializer
+  interface ISchemaMigration {
+    +FromVersion: string
+    +ToVersion: string
+    +Migrate(document): object
+  }
+  class MigrationManager {
+    +Upgrade(document, targetVersion: string): object
+  }
+  class StorageUnitOfWork {
+    +Commit(): void
+    +Rollback(): void
+  }
+  IDataSerializer <|.. JsonDataSerializer
+  MigrationManager --> "0..*" ISchemaMigration
+  JsonCharacterRepository --> IDataSerializer
+  JsonScenarioRepository --> IDataSerializer
+  JsonContentPackStore --> IDataSerializer
+  SqliteSimulationSaveRepository --> StorageUnitOfWork
+}
+
+package "External contracts" {
+  abstract class CreatureSheet
+  class SimulationScenario
+  class SimulationSnapshot
+  class LearnerProgress
+  class ContentManifest
+  class ContentPack
+}
+ICharacterRepository ..> CreatureSheet
+IScenarioRepository ..> SimulationScenario
+ISimulationSaveRepository ..> SimulationSnapshot
+ITrainingProgressRepository ..> LearnerProgress
+IContentPackStore ..> ContentManifest
+IContentPackStore ..> ContentPack
+note bottom of ICharacterRepository
+  Port belongs to Application abstractions; concrete adapters
+  belong to Persistence. Domain types never depend on SQLite/JSON.
+end note
+note bottom of SimulationSave
+  Snapshot resumes a session; events support audit/replay;
+  final training results are separate records. Replay depends
+  on compatible ruleset, content versions and random seed/roll log.
+end note
+note bottom of MigrationManager
+  Migrate schemas explicitly and preserve unknown/unsupported
+  content references. Never silently reinterpret incompatible
+  saved characters against newer pack definitions.
+end note
+note bottom of StorageUnitOfWork
+  Repository transactions and simulation in-memory atomic commits
+  are separate concerns; do not confuse the two boundaries.
+end note
+@enduml

@@ -1,0 +1,270 @@
+@startuml DnD_Combat_v0_3_draft
+' Combat v0.3 — conceptual UML, aligned with Characters/Content/Rules v0.3
+' 14 Nov 2026. Not yet an implementation-ready API.
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+left to right direction
+
+package "Combat — encounter lifecycle" {
+  class Encounter {
+    +Id: Guid
+    +Status: EncounterStatus
+    +Start(): void
+    +Finish(): void
+  }
+  enum EncounterStatus {
+    Setup
+    Active
+    Finished
+  }
+  class Combatant {
+    +Id: Guid
+    +ParticipantId: Guid
+    +InitiativeResult: int
+    +IsInEncounter: bool
+  }
+  class EncounterSetup {
+    +AddParticipant(participantId: Guid): void
+    +RemoveParticipant(participantId: Guid): void
+  }
+  Encounter "1" *-- "1..*" Combatant : encounter roster
+  Encounter --> EncounterStatus
+  Encounter --> EncounterSetup
+}
+
+package "Combat — initiative and timing" {
+  class InitiativeTracker {
+    +GetOrder(): List<Guid>
+    +CurrentCombatantId: Guid
+    +Advance(): void
+  }
+  class TurnManager {
+    +RoundNumber: int
+    +StartTurn(combatantId: Guid): void
+    +EndTurn(): void
+  }
+  class CombatTurn {
+    +CombatantId: Guid
+    +StartedAtSequence: long
+    +IsCompleted: bool
+  }
+  class ActionEconomy {
+    +ActionsAvailable: int
+    +BonusActionsAvailable: int
+    +ReactionAvailable: bool
+    +MovementRemaining: decimal
+  }
+  class TimingWindow {
+    +WindowId: Guid
+    +TriggerEventId: Guid
+    +WindowType: TimingWindowType
+  }
+  enum TimingWindowType {
+    BeforeResolution
+    AfterDeclaration
+    OnHit
+    AfterResolution
+    StartOfTurn
+    EndOfTurn
+    Other
+  }
+  Encounter "1" *-- "1" InitiativeTracker
+  Encounter "1" *-- "1" TurnManager
+  TurnManager "1" o-- "0..1" CombatTurn : current turn
+  Combatant "1" *-- "1" ActionEconomy : encounter state
+  InitiativeTracker --> Combatant : ordered roster
+  TimingWindow --> TimingWindowType
+  note bottom of TimingWindow
+    Illustrative windows, not an exhaustive D&D timing taxonomy.
+    A trigger's exact legal timing comes from rule definitions.
+  end note
+}
+
+package "Combat — action orchestration" {
+  class CombatActionRequest {
+    +RequestId: Guid
+    +ActorCombatantId: Guid
+    +ActionId: ContentId
+    +TargetInstanceIds: List<Guid>
+  }
+  class CombatActionCoordinator {
+    +Submit(request: CombatActionRequest): ActionExecutionResult
+  }
+  class ActionExecutionResult {
+    +Accepted: bool
+    +FailureReasons: List<string>
+  }
+  class CombatActionValidator {
+    +ValidateTiming(request: CombatActionRequest): bool
+    +ValidateEconomy(request: CombatActionRequest): bool
+  }
+  class ActionEconomyPolicy {
+    +GetCost(request: CombatActionRequest): ActionEconomyCost
+    +CanPay(cost: ActionEconomyCost, economy: ActionEconomy): bool
+  }
+  class ActionEconomyCost {
+    +ActionUnits: int
+    +BonusActionUnits: int
+    +ConsumesReaction: bool
+    +MovementCost: decimal
+  }
+  CombatActionCoordinator --> CombatActionValidator
+  CombatActionCoordinator --> ActionEconomyPolicy
+  CombatActionCoordinator ..> CombatActionRequest
+  CombatActionCoordinator ..> ActionExecutionResult
+  ActionEconomyPolicy ..> ActionEconomyCost
+  CombatActionValidator --> TurnManager
+  CombatActionValidator --> Combatant
+}
+
+package "Combat — reactions and interrupts" {
+  class ReactionCoordinator {
+    +CollectOffers(window: TimingWindow): List<ReactionOffer>
+    +SubmitResponse(offerId: Guid): void
+    +CloseWindow(windowId: Guid): void
+  }
+  class ReactionOffer {
+    +OfferId: Guid
+    +ReactorCombatantId: Guid
+    +ReactionActionId: ContentId
+    +ExpiresAtWindowId: Guid
+  }
+  class ResolutionFrame {
+    +FrameId: Guid
+    +ActionRequestId: Guid
+    +Status: ResolutionStatus
+  }
+  enum ResolutionStatus {
+    Pending
+    WaitingForReactions
+    Resolved
+    Cancelled
+  }
+  class ResolutionStack {
+    +Push(frame: ResolutionFrame): void
+    +Peek(): ResolutionFrame
+    +CompleteTop(): void
+  }
+  class ReactionGuard {
+    +MaxDepth: int
+    +CanOpenNestedWindow(): bool
+  }
+  Encounter "1" *-- "1" ReactionCoordinator
+  CombatActionCoordinator --> ReactionCoordinator
+  ReactionCoordinator --> TimingWindow
+  ReactionCoordinator "1" o-- "0..*" ReactionOffer
+  ReactionCoordinator --> ResolutionStack
+  ReactionCoordinator --> ReactionGuard
+  ResolutionStack "1" *-- "0..*" ResolutionFrame
+  ResolutionFrame --> ResolutionStatus
+  note bottom of ReactionCoordinator
+    Reaction eligibility must consider triggers, resources,
+    visibility, range and timing. Controllers may decline.
+    Interrupts can change or cancel pending actions.
+  end note
+}
+
+package "Combat — movement and encounter events" {
+  class CombatMovementRequest {
+    +CombatantId: Guid
+    +Destination: Position
+  }
+  class MovementCoordinator {
+    +Evaluate(request: CombatMovementRequest): MovementResult
+  }
+  class MovementResult {
+    +Allowed: bool
+    +Cost: decimal
+  }
+  class CombatEvent {
+    +Id: Guid
+    +Sequence: long
+    +EventType: string
+  }
+  class CombatLog {
+    +GetEvents(): List<CombatEvent>
+  }
+  class EncounterOutcome {
+    +IsFinished: bool
+    +Reason: string
+  }
+  class EncounterEndEvaluator {
+    +Evaluate(encounter: Encounter): EncounterOutcome
+  }
+  MovementCoordinator ..> CombatMovementRequest
+  MovementCoordinator ..> MovementResult
+  Encounter "1" *-- "1" CombatLog
+  CombatLog "1" *-- "0..*" CombatEvent
+  EncounterEndEvaluator ..> EncounterOutcome
+  EncounterEndEvaluator --> Encounter
+}
+
+package "Rules — external contract" {
+  class RulesEngine {
+    +Evaluate(command: RuleCommand, context: RuleContext): RuleOutcome
+  }
+  abstract class RuleCommand
+  class UseActionCommand
+  class RuleContext
+  class RuleOutcome {
+    +IsValid: bool
+  }
+  class StateChange <<immutable>>
+  RuleCommand <|-- UseActionCommand
+  RuleOutcome "1" *-- "0..*" StateChange
+}
+package "Simulation — external ownership" {
+  class SimulationParticipant
+  class SimulationState
+  interface IStateChangeApplier {
+    +Apply(changes: List<StateChange>, state: SimulationState): void
+  }
+  class SimulationSession
+}
+package "World — external space" {
+  interface ISpatialRules {
+    +CalculateDistance(a: Position, b: Position): decimal
+    +ValidateMovement(path): bool
+  }
+  class Position <<value object>>
+}
+package "Content — external definitions" {
+  class ContentId <<value object>>
+  class ActionDefinition
+}
+
+Combatant --> SimulationParticipant : references, does not own
+CombatActionCoordinator --> RulesEngine : evaluate, no direct mutation
+CombatActionCoordinator --> IStateChangeApplier : commit valid outcome
+CombatActionCoordinator --> SimulationState : authoritative state
+CombatActionCoordinator --> CombatLog : append committed events
+CombatActionCoordinator --> ActionDefinition : action timing/cost metadata
+ReactionCoordinator --> RulesEngine : trigger / reaction rule checks
+MovementCoordinator --> ISpatialRules : map-specific geometry
+MovementCoordinator --> RulesEngine : speed, effects, opportunity triggers
+MovementCoordinator --> ReactionCoordinator : interrupt windows
+SimulationSession --> Encounter : manages encounter lifecycle
+
+note bottom of CombatActionCoordinator
+  Orchestrates: validate timing/economy; evaluate via Rules;
+  open and resolve reaction windows; atomically commit proposed
+  StateChange (including action-economy cost); append events.
+  A command that fails validation must not spend resources.
+end note
+note bottom of TurnManager
+  Round/turn progression belongs to Combat, not Rules.
+  Reaction timing may occur outside the reactor's own turn.
+  Exceptional actor actions (e.g., legendary/lair actions)
+  should enter through configurable timing/action policies,
+  not hard-coded extra turns.
+end note
+note bottom of Combatant
+  Encounter-specific data only. Current HP, conditions and
+  limited resources have ONE source of truth in runtime state.
+end note
+note bottom of ResolutionStack
+  Conceptual nested-resolution mechanism; concrete rule timing
+  and priority are subject to further design and source checks.
+end note
+@enduml
