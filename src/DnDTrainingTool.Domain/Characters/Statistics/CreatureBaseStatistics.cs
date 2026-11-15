@@ -1,3 +1,5 @@
+using System.Dynamic;
+
 namespace DnDTrainingTool.Domain.Characters.Statistics;
 
 public sealed class CreatureBaseStatistics
@@ -6,13 +8,15 @@ public sealed class CreatureBaseStatistics
     public HitPointProfile HitPoints{get; }
     public MovementProfile Movement{get; }
     public SenseProfile Senses{get; }
+    public DefenseProfile Defenses{get; }
 
     public CreatureBaseStatistics
         (
         AbilityScores abilities,
         HitPointProfile hitPoints,
         MovementProfile movement,
-        SenseProfile senses
+        SenseProfile senses,
+        DefenseProfile defenses
         )
     {
         Abilities = abilities
@@ -23,5 +27,7 @@ public sealed class CreatureBaseStatistics
             ?? throw new ArgumentNullException(nameof(movement));
         Senses = senses
             ?? throw new ArgumentNullException(nameof(senses));
+        Defenses = defenses
+            ?? throw new ArgumentNullException(nameof(defenses));
     }
 }
