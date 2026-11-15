@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using DnDTraining.Domain.Characters.Statistics;
 
 namespace DnDTrainingTool.Domain.Characters.Statistics;
 
@@ -6,6 +7,13 @@ public sealed class ProficiencyProfile
 {
     private readonly Dictionary<Skill, ProficiencyLevel> _skills = new();
     private readonly HashSet<Ability> _savingThrows = new();
+    
+    private readonly HashSet<EquipmentProficiencyType> _equipmentCategories = new();
+    private readonly HashSet<string> _specificEquipment = new();
+    private readonly HashSet<string> _tools = new();
+
+
+
     public ProficiencyLevel GetSkillProficiency(Skill skill)
     {
         if (!Enum.IsDefined(skill))
@@ -30,6 +38,7 @@ public sealed class ProficiencyProfile
             _skills[skill] = level;
     }
 
+
     public bool HasSavingThrowProficiency(Ability ability)
     {
         if (!Enum.IsDefined(ability))
@@ -51,4 +60,52 @@ public sealed class ProficiencyProfile
         else
             _savingThrows.Remove(ability);
     }
+
+
+    
+    public void AddEquipmentCategory(EquipmentProficiencyType type)
+    {
+        if (!Enum.IsDefined(type))
+            throw new ArgumentOutOfRangeException(nameof(type));
+
+        _equipmentCategories.Add(type);
+    }
+
+    public bool HasEquipmentCategory(EquipmentProficiencyType type)
+    {
+        if (!Enum.IsDefined(type))
+            throw new ArgumentOutOfRangeException(nameof(type));
+
+            return _equipmentCategories.Contains(type);
+    }
+
+    public void AddSpecificEquipment(string equipmentId)
+    {
+        if (string.IsNullOrWhiteSpace(equipmentId))
+            throw new ArgumentException(
+                "Equipment ID cannot be empty.",
+                nameof(equipmentId)
+            );
+        _specificEquipment.Add(equipmentId);
+    }
+    public bool HasSpecificEquipment(string equipmentId)
+    {
+        return _specificEquipment.Contains(equipmentId);
+    }
+
+    public void AddTool(string toolId)
+    {
+        if (string.IsNullOrWhiteSpace(toolId))
+        throw new ArgumentException(
+            "Tool ID cannot be empty.",
+            nameof(toolId));
+
+        _tools.Add(toolId);
+    }
+
+    public bool HasTool(string toolId)
+    {
+    return _tools.Contains(toolId);
+    }
+
 }
