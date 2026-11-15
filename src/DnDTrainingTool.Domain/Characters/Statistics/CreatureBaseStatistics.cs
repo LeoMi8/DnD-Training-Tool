@@ -9,6 +9,7 @@ public sealed class CreatureBaseStatistics
     public MovementProfile Movement{get; }
     public SenseProfile Senses{get; }
     public DefenseProfile Defenses{get; }
+    public ProficiencyProfile Proficiencies{get; }
 
     public CreatureBaseStatistics
         (
@@ -16,7 +17,8 @@ public sealed class CreatureBaseStatistics
         HitPointProfile hitPoints,
         MovementProfile movement,
         SenseProfile senses,
-        DefenseProfile defenses
+        DefenseProfile defenses,
+        ProficiencyProfile proficiencies
         )
     {
         Abilities = abilities
@@ -29,5 +31,8 @@ public sealed class CreatureBaseStatistics
             ?? throw new ArgumentNullException(nameof(senses));
         Defenses = defenses
             ?? throw new ArgumentNullException(nameof(defenses));
+        Proficiencies = proficiencies
+            ?? throw new ArgumentNullException(nameof(proficiencies));
+            
     }
 }
