@@ -1,14 +1,19 @@
 
+using System.ComponentModel;
+using DnDTrainingTool.Domain.Content.Identifiers;
+
 namespace DnDTrainingTool.Domain.Content.Definitions;
 
 public sealed class ClassLevelDefinition
 {
     private readonly List<GrantDefinition> _grants = new();
-
     public int Level { get; }
-
     public IReadOnlyList<GrantDefinition> Grants =>
         _grants.AsReadOnly();
+    private readonly List<ContentId> _choiceIds = new();
+    public IReadOnlyList<ContentId> ChoiceIds =>
+        _choiceIds.AsReadOnly();
+
 
     public ClassLevelDefinition(int level)
     {
@@ -26,5 +31,24 @@ public sealed class ClassLevelDefinition
     {
         ArgumentNullException.ThrowIfNull(grant);
         _grants.Add(grant);
+    }
+
+        public void AddChoice(ContentId choiceId)
+    {
+        if (string.IsNullOrWhiteSpace(choiceId.PackId) ||
+            string.IsNullOrWhiteSpace(choiceId.LocalId))
+        {
+            throw new ArgumentException(
+                "Choice ID must be valid.",
+                nameof(choiceId));
+        }
+
+        if (_choiceIds.Contains(choiceId))
+        {
+            throw new InvalidOperationException(
+                "This choice is already assigned to this class level.");
+        }
+
+        _choiceIds.Add(choiceId);
     }
 }

@@ -9,6 +9,11 @@ public sealed class SpeciesDefinition : ContentDefinition
     private readonly List<GrantDefinition> _grants = new();
     public IReadOnlyList<GrantDefinition> Grants =>
         _grants.AsReadOnly();
+    private readonly List<ContentId> _choiceIds = new();
+    public IReadOnlyList<ContentId> ChoiceIds =>
+        _choiceIds.AsReadOnly();
+
+
     public SpeciesDefinition(
         ContentId id,
         string name,
@@ -24,5 +29,20 @@ public sealed class SpeciesDefinition : ContentDefinition
     {
         ArgumentNullException.ThrowIfNull(grant);
         _grants.Add(grant);
+    }
+
+    public void AddChoice(ContentId choiceId)
+    {
+        if (string.IsNullOrWhiteSpace(choiceId.PackId) ||
+            string.IsNullOrWhiteSpace(choiceId.LocalId))
+            throw new ArgumentException(
+                "Choice ID must be valid.",
+                nameof(choiceId));
+
+        if (_choiceIds.Contains(choiceId))
+            throw new InvalidOperationException(
+                "This choice is already assigned to the species.");
+
+        _choiceIds.Add(choiceId);
     }
 }
