@@ -29,4 +29,18 @@ public sealed class MovementProfile
         
         _speeds[type] = speed;
     }
+
+    public MovementProfile Clone()
+    {
+        var copy = new MovementProfile(
+                GetSpeed(MovementType.Walking));
+        
+        foreach (var (type, speed) in _speeds)
+        {
+            copy.SetSpeed(type, speed);
+        }
+
+        return copy;
+    }
+
 }

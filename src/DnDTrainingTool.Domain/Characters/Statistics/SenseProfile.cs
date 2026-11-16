@@ -26,4 +26,17 @@ public sealed class SenseProfile
         else
             _senses[type] = range;
     }
+
+    public SenseProfile Clone()
+    {
+        var copy = new SenseProfile();
+
+        foreach (var (type, range) in _senses)
+        {
+            copy.SetRange(type, range);
+        }
+
+        return copy;
+    }
+
 }
