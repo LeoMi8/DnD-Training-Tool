@@ -7,6 +7,10 @@ public sealed class ClassDefinition : ContentDefinition
 {
     public string Description { get; }
     public int HitDie { get; }
+    private readonly Dictionary<int, ClassLevelDefinition> _levels = new();
+
+    public IReadOnlyCollection<ClassLevelDefinition> Levels =>
+        _levels.Values.ToList().AsReadOnly();
 
     public ClassDefinition(
         ContentId id,
@@ -26,5 +30,27 @@ public sealed class ClassDefinition : ContentDefinition
             ?? throw new ArgumentNullException(nameof(description));
 
         HitDie = hitDie;
+    }
+
+    public void AddLevelDefinition(ClassLevelDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        if (!_levels.TryAdd(definition.Level, definition))
+        {
+            throw new InvalidOperationException(
+                $"Level '{definition.Level}' is already defined for this class."
+            );
+        }
+    }
+
+    public ClassLevelDefinition GetLevelDefinition(int level)
+    {
+        if (!_levels.TryGetValue(level, out var definition))
+        {
+            throw new KeyNotFoundException(
+                $"Level '{level}' is not defined for class '{Name}'."
+            );
+        }
+        return definition;
     }
 }
