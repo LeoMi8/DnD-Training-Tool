@@ -24,7 +24,7 @@ public class CreatureInstanceFactoryTest
 
         var build = new CharacterBuild(
             new SpeciesSelection(new ContentId("test-pack", "human")),
-            new BackgroundSelection("guard"),
+            new BackgroundSelection(new ContentId("test-pack", "guard")),
             new CharacterProgression("fighter")
         );
 

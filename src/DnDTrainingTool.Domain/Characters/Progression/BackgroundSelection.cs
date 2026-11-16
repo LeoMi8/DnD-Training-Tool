@@ -1,16 +1,22 @@
+
+using DnDTrainingTool.Domain.Content.Identifiers;
+
 namespace DnDTrainingTool.Domain.Characters.Progression;
 
 public sealed class BackgroundSelection
 {
-    public string BackgroundId {get; }
+    public ContentId BackgroundId { get; }
 
-    public BackgroundSelection(string backgroundId)
+    public BackgroundSelection(ContentId backgroundId)
     {
-        if (string.IsNullOrWhiteSpace(backgroundId))
+        if (string.IsNullOrWhiteSpace(backgroundId.PackId) ||
+            string.IsNullOrWhiteSpace(backgroundId.LocalId))
+        {
             throw new ArgumentException(
-                "Background ID cannot be empty.",
-                nameof(backgroundId)
-            );
-        BackgroundId = backgroundId.Trim();
+                "Background ID must be valid.",
+                nameof(backgroundId));
+        }
+
+        BackgroundId = backgroundId;
     }
 }
