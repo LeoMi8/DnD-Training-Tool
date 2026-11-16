@@ -30,4 +30,27 @@ public sealed class DefenseProfile
     public bool HasVulnerability(DamageType type) =>
         _vulnerabilities.Contains(type);
 
+    public DefenseProfile Clone()
+    {
+        var copy = new DefenseProfile();
+
+        foreach (var type in _resistances)
+        {
+            copy.AddResistance(type);
+        }
+
+        foreach (var type in _immunities)
+        {
+            copy.AddImmunity(type);
+        }
+
+        foreach (var type in _vulnerabilities)
+        {
+            copy.AddVulnerability(type);
+        }
+
+        return copy;
+    }
+
+
 }

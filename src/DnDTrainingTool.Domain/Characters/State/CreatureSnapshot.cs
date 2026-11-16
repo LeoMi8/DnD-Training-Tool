@@ -26,8 +26,8 @@ public sealed class CreatureSnapshot
         SourceCreatureId = sourceCreatureId;
         Name = name.Trim();
 
-        Statistics = statistics
-            ?? throw new ArgumentNullException(nameof(statistics));
+        ArgumentNullException.ThrowIfNull(statistics);
+        Statistics = statistics.Clone();
     }
 
 }

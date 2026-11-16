@@ -35,4 +35,25 @@ public sealed class CreatureBaseStatistics
             ?? throw new ArgumentNullException(nameof(proficiencies));
             
     }
+
+
+    public CreatureBaseStatistics Clone()
+    {
+        return new CreatureBaseStatistics(
+            new AbilityScores(
+                Abilities.Strength,
+                Abilities.Dexterity,
+                Abilities.Constitution,
+                Abilities.Intelligence,
+                Abilities.Wisdom,
+                Abilities.Charisma
+            ),
+            new HitPointProfile(HitPoints.BaseHitPoints),
+            Movement.Clone(),
+            Senses.Clone(),
+            Defenses.Clone(),
+            Proficiencies.Clone()
+        );
+    }
+
 }
