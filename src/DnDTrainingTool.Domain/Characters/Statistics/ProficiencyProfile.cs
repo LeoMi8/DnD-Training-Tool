@@ -108,4 +108,37 @@ public sealed class ProficiencyProfile
     return _tools.Contains(toolId);
     }
 
+    public ProficiencyProfile Clone()
+    {
+        var copy = new ProficiencyProfile();
+
+        foreach (var (skill, level) in _skills)
+        {
+            copy.SetSkillProficiency(skill, level);
+        }
+
+        foreach (var ability in _savingThrows)
+        {
+            copy.SetSavingThrowProficiency(ability, true);
+        }
+
+        foreach (var category in _equipmentCategories)
+        {
+            copy.AddEquipmentCategory(category);
+        }
+
+        foreach (var equipmentId in _specificEquipment)
+        {
+            copy.AddSpecificEquipment(equipmentId);
+        }
+
+        foreach (var toolId in _tools)
+        {
+            copy.AddTool(toolId);
+        }
+
+        return copy;
+    }
+
+
 }
