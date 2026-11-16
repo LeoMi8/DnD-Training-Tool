@@ -3,7 +3,12 @@ namespace DnDTrainingTool.Domain.Content.Definitions;
 
 public sealed class ClassLevelDefinition
 {
+    private readonly List<GrantDefinition> _grants = new();
+
     public int Level { get; }
+
+    public IReadOnlyList<GrantDefinition> Grants =>
+        _grants.AsReadOnly();
 
     public ClassLevelDefinition(int level)
     {
@@ -15,5 +20,11 @@ public sealed class ClassLevelDefinition
         }
 
         Level = level;
+    }
+
+    public void AddGrant(GrantDefinition grant)
+    {
+        ArgumentNullException.ThrowIfNull(grant);
+        _grants.Add(grant);
     }
 }
