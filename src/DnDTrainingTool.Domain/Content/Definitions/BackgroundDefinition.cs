@@ -4,6 +4,10 @@ namespace DnDTrainingTool.Domain.Content.Definitions;
 public sealed class BackgroundDefinition : ContentDefinition
 {
     public string Description {get; }
+    private readonly List<GrantDefinition> _grants = new();
+    public IReadOnlyList<GrantDefinition> Grants =>
+        _grants.AsReadOnly();
+
 
         public BackgroundDefinition(
                 ContentId id,
@@ -14,4 +18,11 @@ public sealed class BackgroundDefinition : ContentDefinition
         Description = description
             ?? throw new ArgumentNullException(nameof(description));
     }
+
+    public void AddGrant(GrantDefinition grant)
+    {
+        ArgumentNullException.ThrowIfNull(grant);
+        _grants.Add(grant);
+    }
+
 }
