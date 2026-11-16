@@ -18,4 +18,8 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DnDTrainingTool.Domain\DnDTrainingTool.Domain.csproj" />
+  </ItemGroup>
+
 </Project>
