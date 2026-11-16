@@ -1,26 +1,32 @@
+
+using DnDTrainingTool.Domain.Content.Identifiers;
+
 namespace DnDTrainingTool.Domain.Characters.Progression;
 
 public sealed class CharacterChoice
 {
-    public string ChoiceId {get; }
-    public string SelectedOptionId {get; }
+    public ContentId ChoiceId { get; }
+    public ContentId SelectedOptionId { get; }
 
     public CharacterChoice(
-            string choiceId,
-            string selectedOptionId
-        )
+        ContentId choiceId,
+        ContentId selectedOptionId)
     {
-        if (string.IsNullOrWhiteSpace(choiceId))
-            throw new ArgumentException(
-                "Choice ID cannot be empty.",
-                nameof(choiceId));
+        ValidateId(choiceId, nameof(choiceId));
+        ValidateId(selectedOptionId, nameof(selectedOptionId));
 
-        if (string.IsNullOrWhiteSpace(selectedOptionId))
+        ChoiceId = choiceId;
+        SelectedOptionId = selectedOptionId;
+    }
+
+    private static void ValidateId(ContentId id, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(id.PackId) ||
+            string.IsNullOrWhiteSpace(id.LocalId))
+        {
             throw new ArgumentException(
-                "Selected option ID cannot be empty.",
-                nameof(selectedOptionId));
-        
-        ChoiceId = choiceId.Trim();
-        SelectedOptionId = selectedOptionId.Trim();
+                "Content ID must be valid.",
+                parameterName);
+        }
     }
 }
