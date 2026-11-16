@@ -2,6 +2,7 @@ using DndTrainingTool.Domain.Characters.State;
 using DnDTrainingTool.Domain.Characters.Creatures;
 using DnDTrainingTool.Domain.Characters.Progression;
 using DnDTrainingTool.Domain.Characters.Statistics;
+using DnDTrainingTool.Domain.Content.Identifiers;
 using Xunit;
 
 namespace DnDTrainingTool.Test.Characters;
@@ -22,7 +23,7 @@ public class CreatureInstanceFactoryTest
         );
 
         var build = new CharacterBuild(
-            new SpeciesSelection("human"),
+            new SpeciesSelection(new ContentId("test-pack", "human")),
             new BackgroundSelection("guard"),
             new CharacterProgression("fighter")
         );
