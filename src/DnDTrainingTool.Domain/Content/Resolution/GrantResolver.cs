@@ -1,7 +1,4 @@
 
-using System.Runtime.Serialization.Formatters;
-using System.Security.AccessControl;
-using System.Text.RegularExpressions;
 using DndTrainingTool.Domain.Content;
 using DnDTrainingTool.Domain.Characters.Progression;
 using DnDTrainingTool.Domain.Content.Definitions;
@@ -12,24 +9,26 @@ namespace DnDTrainingTool.Domain.Content.Resolution;
 public sealed class GrantResolver
 {
     private readonly ContentRegistry _registry;
-    
+
     public GrantResolver(ContentRegistry registry)
     {
         _registry = registry
             ?? throw new ArgumentNullException(nameof(registry));
-    } 
+    }
 
     public IReadOnlyList<ResolvedGrant> Resolve(CharacterBuild build)
     {
         ArgumentNullException.ThrowIfNull(build);
+
         var results = new List<ResolvedGrant>();
 
+        // 1. Species grants
         var species = _registry.Get<SpeciesDefinition>(
-                build.Species.SpeciesId
-            );
+            build.Species.SpeciesId);
+
         AddGrants(results, species.Id, null, species.Grants);
 
-        
+        // 2. Selected species options
         foreach (var selection in build.Species.Options)
         {
             var choice = _registry.Get<ChoiceDefinition>(
@@ -58,27 +57,105 @@ public sealed class GrantResolver
                 selectedOption.Grants);
         }
 
-
+        // 3. Background grants
         var background = _registry.Get<BackgroundDefinition>(
-                build.Background.BackgroundId
-            );
-        AddGrants(results, background.Id, null, background.Grants);
+            build.Background.BackgroundId);
 
-        var classLevels = build.Progression.LevelHistory.GroupBy(record => record.ClassId);
+        AddGrants(
+            results,
+            background.Id,
+            null,
+            background.Grants);
+
+        // 4. Class grants
+        var classLevels = build.Progression.LevelHistory
+            .GroupBy(record => record.ClassId);
+
         foreach (var group in classLevels)
         {
-            var classDefinition = _registry.Get<ClassDefinition>(group.Key);
+            var classDefinition =
+                _registry.Get<ClassDefinition>(group.Key);
+
             int acquiredLevels = group.Count();
+
             for (int level = 1; level <= acquiredLevels; level++)
             {
-                var levelDefinition = classDefinition.GetLevelDefinition(level);
+                var levelDefinition =
+                    classDefinition.GetLevelDefinition(level);
 
                 AddGrants(
                     results,
                     classDefinition.Id,
                     level,
-                    levelDefinition.Grants
-                );
+                    levelDefinition.Grants);
+            }
+        }
+
+        // 5. Find selected subclasses
+        var classLevelCounts = new Dictionary<ContentId, int>();
+        var selectedSubclasses =
+            new Dictionary<ContentId, SubclassDefinition>();
+
+        foreach (var record in build.Progression.LevelHistory)
+        {
+            int classLevel =
+                classLevelCounts.GetValueOrDefault(record.ClassId) + 1;
+
+            classLevelCounts[record.ClassId] = classLevel;
+
+            var currentClass =
+                _registry.Get<ClassDefinition>(record.ClassId);
+
+            var currentLevel =
+                currentClass.GetLevelDefinition(classLevel);
+
+            foreach (var selection in record.Choices)
+            {
+                if (!currentLevel.ChoiceIds.Contains(selection.ChoiceId))
+                    continue;
+
+                var choiceDefinition =
+                    _registry.Get<ChoiceDefinition>(selection.ChoiceId);
+
+                if (!choiceDefinition.AvailableOptions.Contains(
+                    selection.SelectedOptionId))
+                    continue;
+
+                if (!_registry.TryGet(
+                    selection.SelectedOptionId,
+                    out var selectedDefinition))
+                    continue;
+
+                if (selectedDefinition is not SubclassDefinition subclass)
+                    continue;
+
+                if (subclass.ParentClassId != record.ClassId)
+                {
+                    throw new InvalidOperationException(
+                        $"Subclass '{subclass.Id}' does not belong " +
+                        $"to class '{record.ClassId}'.");
+                }
+
+                if (!selectedSubclasses.TryAdd(record.ClassId, subclass))
+                {
+                    throw new InvalidOperationException(
+                        $"A subclass has already been selected for class '{record.ClassId}'.");
+                }
+            }
+        }
+
+        // 6. Resolve subclass grants
+        foreach (var (classId, subclass) in selectedSubclasses)
+        {
+            int classLevel = classLevelCounts[classId];
+
+            for (int level = 1; level <= classLevel; level++)
+            {
+                AddGrants(
+                    results,
+                    subclass.Id,
+                    level,
+                    subclass.GetLevelGrants(level));
             }
         }
 
@@ -86,72 +163,18 @@ public sealed class GrantResolver
     }
 
     private static void AddGrants(
-            List<ResolvedGrant> results,
-            ContentId sourceId,
-            int? sourceLevel,
-            IReadOnlyList<GrantDefinition> grants
-        )
+        List<ResolvedGrant> results,
+        ContentId sourceId,
+        int? sourceLevel,
+        IReadOnlyList<GrantDefinition> grants)
     {
         foreach (var grant in grants)
         {
             results.Add(
-                    new ResolvedGrant(sourceId, sourceLevel, grant)
-                );
+                new ResolvedGrant(
+                    sourceId,
+                    sourceLevel,
+                    grant));
         }
     }
-
-
-    public IReadOnlyList<ChoiceValidationResult> Validate(
-        SpeciesSelection speciesSelection)
-    {
-        ArgumentNullException.ThrowIfNull(speciesSelection);
-
-        var results = new List<ChoiceValidationResult>();
-
-        var speciesDefinition =
-            _registry.Get<SpeciesDefinition>(speciesSelection.SpeciesId);
-
-        foreach (var choiceId in speciesDefinition.ChoiceIds)
-        {
-            var definition =
-                _registry.Get<ChoiceDefinition>(choiceId);
-
-            var selected = speciesSelection.Options
-                .Where(option => option.OptionId == choiceId)
-                .ToList();
-
-            ChoiceValidationStatus status;
-            string message;
-
-            if (selected.Count < definition.MinimumSelections)
-            {
-                status = ChoiceValidationStatus.Missing;
-                message = "Required species selection is missing.";
-            }
-            else if (
-                selected.Count > definition.MaximumSelections ||
-                selected.Any(option =>
-                    !definition.AvailableOptions.Contains(
-                        option.SelectedValueId)))
-            {
-                status = ChoiceValidationStatus.Invalid;
-                message = "Species selection is not valid.";
-            }
-            else
-            {
-                status = ChoiceValidationStatus.Valid;
-                message = "Species selection is valid.";
-            }
-
-            results.Add(new ChoiceValidationResult(
-                choiceId,
-                null,
-                status,
-                message));
-        }
-
-        return results.AsReadOnly();
-    }
-
-
 }
