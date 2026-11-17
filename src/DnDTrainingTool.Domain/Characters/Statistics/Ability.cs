@@ -4,7 +4,7 @@ public enum Ability
 {
     Strength,
     Dexterity,
-    Consitution,
+    Constitution,
     Intelligence,
     Wisdom,
     Charisma

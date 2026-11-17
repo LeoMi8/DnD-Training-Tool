@@ -38,4 +38,19 @@ public sealed class AbilityScores
 
         return value;
     }
+
+    public int GetScore(Ability ability)
+    {
+        return ability switch
+        {
+            Ability.Strength => Strength,
+            Ability.Dexterity => Dexterity,
+            Ability.Constitution => Constitution,
+            Ability.Intelligence => Intelligence,
+            Ability.Wisdom => Wisdom,
+            Ability.Charisma => Charisma,
+            _ => throw new ArgumentOutOfRangeException(nameof(ability))
+        };
+    }
+
 }
