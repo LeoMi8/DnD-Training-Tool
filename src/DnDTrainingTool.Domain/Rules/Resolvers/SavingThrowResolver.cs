@@ -1,6 +1,7 @@
 
 using DnDTrainingTool.Domain.Characters.Statistics;
 using DnDTrainingTool.Domain.Rules.Calculators;
+using DnDTrainingTool.Domain.Rules.Results;
 
 namespace DnDTrainingTool.Domain.Rules.Resolvers;
 
@@ -12,19 +13,42 @@ public sealed class SavingThrowResolver
         Ability ability,
         int characterLevel)
     {
+        return CalculateDetailed(
+            abilities,
+            proficiencies,
+            ability,
+            characterLevel).Total;
+    }
+
+    public CalculationResult CalculateDetailed(
+        AbilityScores abilities,
+        ProficiencyProfile proficiencies,
+        Ability ability,
+        int characterLevel)
+    {
         ArgumentNullException.ThrowIfNull(abilities);
         ArgumentNullException.ThrowIfNull(proficiencies);
 
-        int abilityScore = abilities.GetScore(ability);
-
         int abilityModifier =
-            AbilityModifierCalculator.Calculate(abilityScore);
+            AbilityModifierCalculator.Calculate(
+                abilities.GetScore(ability));
 
         int proficiencyBonus =
-            proficiencies.HasSavingThrowProficiency(ability)
-                ? ProficiencyBonusCalculator.Calculate(characterLevel)
-                : 0;
+            ProficiencyBonusCalculator.Calculate(characterLevel);
 
-        return abilityModifier + proficiencyBonus;
+        var contributions = new List<ModifierContribution>
+        {
+            new($"{ability} Modifier", abilityModifier)
+        };
+
+        if (proficiencies.HasSavingThrowProficiency(ability))
+        {
+            contributions.Add(
+                new ModifierContribution(
+                    "Saving Throw Proficiency",
+                    proficiencyBonus));
+        }
+
+        return new CalculationResult(contributions);
     }
 }

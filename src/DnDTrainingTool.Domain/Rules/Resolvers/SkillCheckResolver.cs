@@ -1,12 +1,28 @@
 
 using DnDTrainingTool.Domain.Characters.Statistics;
 using DnDTrainingTool.Domain.Rules.Calculators;
+using DnDTrainingTool.Domain.Rules.Results;
 
 namespace DnDTrainingTool.Domain.Rules.Resolvers;
 
 public sealed class SkillCheckResolver
 {
     public int CalculateBonus(
+        AbilityScores abilities,
+        ProficiencyProfile proficiencies,
+        Skill skill,
+        int characterLevel,
+        Ability? abilityOverride = null)
+    {
+        return CalculateDetailed(
+            abilities,
+            proficiencies,
+            skill,
+            characterLevel,
+            abilityOverride).Total;
+    }
+
+    public CalculationResult CalculateDetailed(
         AbilityScores abilities,
         ProficiencyProfile proficiencies,
         Skill skill,
@@ -26,19 +42,38 @@ public sealed class SkillCheckResolver
         int proficiencyBonus =
             ProficiencyBonusCalculator.Calculate(characterLevel);
 
-        var level =
+        var proficiencyLevel =
             proficiencies.GetSkillProficiency(skill);
 
-        int multiplier = level switch
+        int multiplier = proficiencyLevel switch
         {
             ProficiencyLevel.None => 0,
             ProficiencyLevel.Proficient => 1,
             ProficiencyLevel.Expertise => 2,
-
             _ => throw new ArgumentOutOfRangeException(
-                nameof(level))
+                nameof(proficiencyLevel))
         };
 
-        return abilityModifier + proficiencyBonus * multiplier;
+        var contributions = new List<ModifierContribution>
+        {
+            new($"{ability} Modifier", abilityModifier)
+        };
+
+        if (multiplier > 0)
+        {
+            string source = proficiencyLevel switch
+            {
+                ProficiencyLevel.Proficient => "Skill Proficiency",
+                ProficiencyLevel.Expertise => "Skill Expertise",
+                _ => throw new InvalidOperationException()
+            };
+
+            contributions.Add(
+                new ModifierContribution(
+                    source,
+                    proficiencyBonus * multiplier));
+        }
+
+        return new CalculationResult(contributions);
     }
 }
