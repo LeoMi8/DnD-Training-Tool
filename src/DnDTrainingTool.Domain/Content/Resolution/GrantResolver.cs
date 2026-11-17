@@ -29,6 +29,36 @@ public sealed class GrantResolver
             );
         AddGrants(results, species.Id, null, species.Grants);
 
+        
+        foreach (var selection in build.Species.Options)
+        {
+            var choice = _registry.Get<ChoiceDefinition>(
+                selection.OptionId);
+
+            if (!species.ChoiceIds.Contains(choice.Id))
+            {
+                throw new InvalidOperationException(
+                    $"Choice '{choice.Id}' does not belong to species '{species.Id}'.");
+            }
+
+            if (!choice.AvailableOptions.Contains(selection.SelectedValueId))
+            {
+                throw new InvalidOperationException(
+                    $"Option '{selection.SelectedValueId}' is not allowed.");
+            }
+
+            var selectedOption =
+                _registry.Get<SpeciesOptionDefinition>(
+                    selection.SelectedValueId);
+
+            AddGrants(
+                results,
+                selectedOption.Id,
+                null,
+                selectedOption.Grants);
+        }
+
+
         var background = _registry.Get<BackgroundDefinition>(
                 build.Background.BackgroundId
             );
