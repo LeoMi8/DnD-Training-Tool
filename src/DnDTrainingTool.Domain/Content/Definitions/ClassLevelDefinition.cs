@@ -7,9 +7,10 @@ namespace DnDTrainingTool.Domain.Content.Definitions;
 public sealed class ClassLevelDefinition
 {
     private readonly List<GrantDefinition> _grants = new();
-    public int Level { get; }
     public IReadOnlyList<GrantDefinition> Grants =>
         _grants.AsReadOnly();
+    public int Level { get; }
+   
     private readonly List<ContentId> _choiceIds = new();
     public IReadOnlyList<ContentId> ChoiceIds =>
         _choiceIds.AsReadOnly();

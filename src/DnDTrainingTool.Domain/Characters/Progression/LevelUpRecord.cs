@@ -6,12 +6,11 @@ namespace DnDTrainingTool.Domain.Characters.Progression;
 public sealed class LevelUpRecord
 {
     private readonly List<CharacterChoice> _choices = new();
-
-    public int CharacterLevel { get; }
-    public ContentId ClassId { get; }
-
     public IReadOnlyList<CharacterChoice> Choices =>
         _choices.AsReadOnly();
+    public int CharacterLevel { get; }
+    public ContentId ClassId { get; }
+    
 
     public LevelUpRecord(int characterLevel, ContentId classId)
     {

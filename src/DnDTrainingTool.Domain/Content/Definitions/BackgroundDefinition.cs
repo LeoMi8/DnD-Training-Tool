@@ -9,7 +9,7 @@ public sealed class BackgroundDefinition : ContentDefinition
         _grants.AsReadOnly();
 
 
-        public BackgroundDefinition(
+    public BackgroundDefinition(
                 ContentId id,
                 string name,
                 string description

@@ -71,4 +71,57 @@ public sealed class GrantResolver
     }
 
 
+    public IReadOnlyList<ChoiceValidationResult> Validate(
+        SpeciesSelection speciesSelection)
+    {
+        ArgumentNullException.ThrowIfNull(speciesSelection);
+
+        var results = new List<ChoiceValidationResult>();
+
+        var speciesDefinition =
+            _registry.Get<SpeciesDefinition>(speciesSelection.SpeciesId);
+
+        foreach (var choiceId in speciesDefinition.ChoiceIds)
+        {
+            var definition =
+                _registry.Get<ChoiceDefinition>(choiceId);
+
+            var selected = speciesSelection.Options
+                .Where(option => option.OptionId == choiceId)
+                .ToList();
+
+            ChoiceValidationStatus status;
+            string message;
+
+            if (selected.Count < definition.MinimumSelections)
+            {
+                status = ChoiceValidationStatus.Missing;
+                message = "Required species selection is missing.";
+            }
+            else if (
+                selected.Count > definition.MaximumSelections ||
+                selected.Any(option =>
+                    !definition.AvailableOptions.Contains(
+                        option.SelectedValueId)))
+            {
+                status = ChoiceValidationStatus.Invalid;
+                message = "Species selection is not valid.";
+            }
+            else
+            {
+                status = ChoiceValidationStatus.Valid;
+                message = "Species selection is valid.";
+            }
+
+            results.Add(new ChoiceValidationResult(
+                choiceId,
+                null,
+                status,
+                message));
+        }
+
+        return results.AsReadOnly();
+    }
+
+
 }

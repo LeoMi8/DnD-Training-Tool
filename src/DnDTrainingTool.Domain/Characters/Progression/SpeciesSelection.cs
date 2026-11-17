@@ -5,10 +5,10 @@ namespace DnDTrainingTool.Domain.Characters.Progression;
 public sealed class SpeciesSelection
 {
     private readonly List<SpeciesOptionSelection> _options = new();
-    public ContentId SpeciesId{get; }
     public IReadOnlyList<SpeciesOptionSelection> Options =>
         _options.AsReadOnly();
-
+        public ContentId SpeciesId{get; }
+    
     public SpeciesSelection(ContentId speciesId)
     {
         if (string.IsNullOrWhiteSpace(speciesId.PackId) ||

@@ -11,7 +11,7 @@ public enum ChoiceValidationStatus
 
 public sealed record ChoiceValidationResult(
     ContentId ChoiceId,
-    int CharacterLevel,
+    int? CharacterLevel,
     ChoiceValidationStatus Status,
     string Message
 );
