@@ -22,13 +22,23 @@ public sealed class GrantResolver
 
         var results = new List<ResolvedGrant>();
 
-        // 1. Species grants
+        ResolveSpeciesGrants(build, results);
+        ResolveBackgroundGrants(build, results);
+        ResolveClassGrants(build, results);
+        ResolveSubclassGrants(build, results);
+
+        return results.AsReadOnly();
+    }
+
+    private void ResolveSpeciesGrants(
+        CharacterBuild build,
+        List<ResolvedGrant> results)
+    {
         var species = _registry.Get<SpeciesDefinition>(
             build.Species.SpeciesId);
 
         AddGrants(results, species.Id, null, species.Grants);
 
-        // 2. Selected species options
         foreach (var selection in build.Species.Options)
         {
             var choice = _registry.Get<ChoiceDefinition>(
@@ -56,8 +66,12 @@ public sealed class GrantResolver
                 null,
                 selectedOption.Grants);
         }
+    }
 
-        // 3. Background grants
+    private void ResolveBackgroundGrants(
+        CharacterBuild build,
+        List<ResolvedGrant> results)
+    {
         var background = _registry.Get<BackgroundDefinition>(
             build.Background.BackgroundId);
 
@@ -66,19 +80,21 @@ public sealed class GrantResolver
             background.Id,
             null,
             background.Grants);
+    }
 
-        // 4. Class grants
-        var classLevels = build.Progression.LevelHistory
+    private void ResolveClassGrants(
+        CharacterBuild build,
+        List<ResolvedGrant> results)
+    {
+        var classGroups = build.Progression.LevelHistory
             .GroupBy(record => record.ClassId);
 
-        foreach (var group in classLevels)
+        foreach (var group in classGroups)
         {
             var classDefinition =
                 _registry.Get<ClassDefinition>(group.Key);
 
-            int acquiredLevels = group.Count();
-
-            for (int level = 1; level <= acquiredLevels; level++)
+            for (int level = 1; level <= group.Count(); level++)
             {
                 var levelDefinition =
                     classDefinition.GetLevelDefinition(level);
@@ -90,8 +106,12 @@ public sealed class GrantResolver
                     levelDefinition.Grants);
             }
         }
+    }
 
-        // 5. Find selected subclasses
+    private void ResolveSubclassGrants(
+        CharacterBuild build,
+        List<ResolvedGrant> results)
+    {
         var classLevelCounts = new Dictionary<ContentId, int>();
         var selectedSubclasses =
             new Dictionary<ContentId, SubclassDefinition>();
@@ -103,15 +123,15 @@ public sealed class GrantResolver
 
             classLevelCounts[record.ClassId] = classLevel;
 
-            var currentClass =
+            var classDefinition =
                 _registry.Get<ClassDefinition>(record.ClassId);
 
-            var currentLevel =
-                currentClass.GetLevelDefinition(classLevel);
+            var levelDefinition =
+                classDefinition.GetLevelDefinition(classLevel);
 
             foreach (var selection in record.Choices)
             {
-                if (!currentLevel.ChoiceIds.Contains(selection.ChoiceId))
+                if (!levelDefinition.ChoiceIds.Contains(selection.ChoiceId))
                     continue;
 
                 var choiceDefinition =
@@ -123,10 +143,10 @@ public sealed class GrantResolver
 
                 if (!_registry.TryGet(
                     selection.SelectedOptionId,
-                    out var selectedDefinition))
+                    out var definition))
                     continue;
 
-                if (selectedDefinition is not SubclassDefinition subclass)
+                if (definition is not SubclassDefinition subclass)
                     continue;
 
                 if (subclass.ParentClassId != record.ClassId)
@@ -139,17 +159,16 @@ public sealed class GrantResolver
                 if (!selectedSubclasses.TryAdd(record.ClassId, subclass))
                 {
                     throw new InvalidOperationException(
-                        $"A subclass has already been selected for class '{record.ClassId}'.");
+                        $"A subclass has already been selected for '{record.ClassId}'.");
                 }
             }
         }
 
-        // 6. Resolve subclass grants
         foreach (var (classId, subclass) in selectedSubclasses)
         {
-            int classLevel = classLevelCounts[classId];
+            int acquiredLevels = classLevelCounts[classId];
 
-            for (int level = 1; level <= classLevel; level++)
+            for (int level = 1; level <= acquiredLevels; level++)
             {
                 AddGrants(
                     results,
@@ -158,8 +177,6 @@ public sealed class GrantResolver
                     subclass.GetLevelGrants(level));
             }
         }
-
-        return results.AsReadOnly();
     }
 
     private static void AddGrants(
@@ -170,11 +187,10 @@ public sealed class GrantResolver
     {
         foreach (var grant in grants)
         {
-            results.Add(
-                new ResolvedGrant(
-                    sourceId,
-                    sourceLevel,
-                    grant));
+            results.Add(new ResolvedGrant(
+                sourceId,
+                sourceLevel,
+                grant));
         }
     }
 }
