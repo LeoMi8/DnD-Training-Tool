@@ -8,6 +8,14 @@ public sealed class ClassDefinition : ContentDefinition
     public string Description { get; }
     public int HitDie { get; }
     private readonly Dictionary<int, ClassLevelDefinition> _levels = new();
+    private readonly List<GrantDefinition> _initialClassGrants = new();
+    private readonly List<GrantDefinition> _multiclassEntryGrants = new();
+
+    public IReadOnlyList<GrantDefinition> InitialClassGrants =>
+        _initialClassGrants.AsReadOnly();
+
+    public IReadOnlyList<GrantDefinition> MulticlassEntryGrants =>
+        _multiclassEntryGrants.AsReadOnly();
 
     public IReadOnlyCollection<ClassLevelDefinition> Levels =>
         _levels.Values.ToList().AsReadOnly();
@@ -52,5 +60,17 @@ public sealed class ClassDefinition : ContentDefinition
             );
         }
         return definition;
+    }
+
+        public void AddInitialClassGrant(GrantDefinition grant)
+    {
+        ArgumentNullException.ThrowIfNull(grant);
+        _initialClassGrants.Add(grant);
+    }
+
+    public void AddMulticlassEntryGrant(GrantDefinition grant)
+    {
+        ArgumentNullException.ThrowIfNull(grant);
+        _multiclassEntryGrants.Add(grant);
     }
 }

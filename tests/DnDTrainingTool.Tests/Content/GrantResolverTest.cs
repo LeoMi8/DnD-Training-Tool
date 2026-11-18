@@ -5,6 +5,7 @@ using DnDTrainingTool.Domain.Content.Definitions;
 using DnDTrainingTool.Domain.Content.Identifiers;
 using DnDTrainingTool.Domain.Content.Resolution;
 using Xunit;
+using DnDTraining.Domain.Characters.Statistics;
 
 namespace DnDTrainingTool.Tests.Content;
 
@@ -103,4 +104,55 @@ public class GrantResolverTests
         Assert.Contains(grants, g =>
             g.SourceId == sorcererId && g.SourceLevel == 2);
     }
+
+        [Theory]
+        [InlineData(true, EquipmentProficiencyType.Shields)]
+        [InlineData(false, EquipmentProficiencyType.LightArmor)]
+        public void Resolve_SelectsEquipmentGrantsByClassEntry(
+            bool startsInArmoredClass,
+            EquipmentProficiencyType expectedCategory)
+        {
+            var registry = new ContentRegistry();
+            var speciesId = new ContentId("test", "species");
+            var backgroundId = new ContentId("test", "background");
+            var armoredClassId = new ContentId("test", "armored-class");
+            var otherClassId = new ContentId("test", "other-class");
+
+            registry.Register(new SpeciesDefinition(speciesId, "Species", ""));
+            registry.Register(new BackgroundDefinition(backgroundId, "Background", ""));
+
+            var armoredClass = new ClassDefinition(armoredClassId, "Armored Class", "", 10);
+            armoredClass.AddLevelDefinition(new ClassLevelDefinition(1));
+            armoredClass.AddLevelDefinition(new ClassLevelDefinition(2));
+
+            armoredClass.AddInitialClassGrant(
+                new EquipmentProficiencyGrantDefinition(EquipmentProficiencyType.Shields));
+
+            armoredClass.AddMulticlassEntryGrant(
+                new EquipmentProficiencyGrantDefinition(EquipmentProficiencyType.LightArmor));
+
+            registry.Register(armoredClass);
+
+            var otherClass = new ClassDefinition(otherClassId, "Other Class", "", 8);
+            otherClass.AddLevelDefinition(new ClassLevelDefinition(1));
+            registry.Register(otherClass);
+
+            var progression = new CharacterProgression(
+                startsInArmoredClass ? armoredClassId : otherClassId);
+
+            progression.AddLevel(startsInArmoredClass ? otherClassId : armoredClassId);
+            progression.AddLevel(armoredClassId);
+
+            var build = new CharacterBuild(
+                new SpeciesSelection(speciesId),
+                new BackgroundSelection(backgroundId),
+                progression);
+
+            var resolved = Assert.Single(new GrantResolver(registry).Resolve(build));
+            var grant = Assert.IsType<EquipmentProficiencyGrantDefinition>(resolved.Grant);
+
+            Assert.Equal(expectedCategory, grant.Category);
+            Assert.Equal(armoredClassId, resolved.SourceId);
+            Assert.Equal(1, resolved.SourceLevel);
+        }
 }

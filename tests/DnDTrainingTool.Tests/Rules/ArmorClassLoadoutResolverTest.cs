@@ -1,4 +1,5 @@
 
+using DnDTraining.Domain.Characters.Statistics;
 using DnDTrainingTool.Domain.Content;
 using DnDTrainingTool.Domain.Characters.Equipment;
 using DnDTrainingTool.Domain.Characters.Statistics;
@@ -25,23 +26,24 @@ public class ArmorClassLoadoutResolverTests
             10, 16, 12, 10, 14, 10);
 
         var loadout = new EquipmentLoadout();
+        var proficiencies = new ProficiencyProfile();
         var resolver = new ArmorClassLoadoutResolver(registry);
 
         // No armor: 10 + 3
         Assert.Equal(13, resolver.CalculateDetailed(
-            abilities, loadout).Total);
+            abilities, loadout, proficiencies).Total);
 
         // Chain Mail: fixed AC 16
         loadout.EquipArmor(armorId);
 
         Assert.Equal(16, resolver.CalculateDetailed(
-            abilities, loadout).Total);
+            abilities, loadout, proficiencies).Total);
 
         // Remove armor: return to normal AC
         loadout.UnequipArmor();
 
         Assert.Equal(13, resolver.CalculateDetailed(
-            abilities, loadout).Total);
+            abilities, loadout, proficiencies).Total);
     }
 
     [Fact]
@@ -53,6 +55,7 @@ public class ArmorClassLoadoutResolverTests
             10, 16, 12, 10, 14, 10);
 
         var loadout = new EquipmentLoadout();
+        var proficiencies = new ProficiencyProfile();
 
         var monkOption = new ArmorClassOption(
             new ArmorClassFormula(
@@ -71,6 +74,7 @@ public class ArmorClassLoadoutResolverTests
         var result = resolver.CalculateDetailed(
             abilities,
             loadout,
+            proficiencies,
             specialOptions: specialOptions,
             selectedSpecialOption: monkOption);
 
@@ -84,6 +88,7 @@ public class ArmorClassLoadoutResolverTests
             resolver.CalculateDetailed(
                 abilities,
                 loadout,
+                proficiencies,
                 specialOptions: specialOptions,
                 selectedSpecialOption: monkOption));
     }
@@ -105,11 +110,15 @@ public class ArmorClassLoadoutResolverTests
         loadout.EquipShield(shieldId);
 
         var resolver = new ArmorClassLoadoutResolver(registry);
+        var proficiencies = new ProficiencyProfile();
+        proficiencies.AddEquipmentCategory(EquipmentProficiencyType.LightArmor);
 
         Assert.Equal(13, resolver.CalculateDetailed(
-            abilities, loadout, hasShieldTraining: false).Total);
+            abilities, loadout, proficiencies).Total);
+
+        proficiencies.AddEquipmentCategory(EquipmentProficiencyType.Shields);
 
         Assert.Equal(15, resolver.CalculateDetailed(
-            abilities, loadout, hasShieldTraining: true).Total);
+            abilities, loadout, proficiencies).Total);
     }
 }

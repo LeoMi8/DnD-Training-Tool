@@ -1,4 +1,5 @@
 
+using DnDTraining.Domain.Characters.Statistics;
 using DnDTrainingTool.Domain.Characters.Equipment;
 using DnDTrainingTool.Domain.Characters.Statistics;
 using DnDTrainingTool.Domain.Content;
@@ -22,12 +23,13 @@ public sealed class ArmorClassLoadoutResolver
     public CalculationResult CalculateDetailed(
         AbilityScores abilities,
         EquipmentLoadout loadout,
-        bool hasShieldTraining = false,
+        ProficiencyProfile proficiencies,
         IEnumerable<ArmorClassOption>? specialOptions = null,
         ArmorClassOption? selectedSpecialOption = null)
     {
         ArgumentNullException.ThrowIfNull(abilities);
         ArgumentNullException.ThrowIfNull(loadout);
+        ArgumentNullException.ThrowIfNull(proficiencies);
 
         var options = new List<ArmorClassOption>();
 
@@ -95,7 +97,8 @@ public sealed class ArmorClassLoadoutResolver
         {
             var shield = _registry.Get<ShieldDefinition>(shieldId);
 
-            if (hasShieldTraining)
+            if (proficiencies.HasEquipmentCategory(
+                EquipmentProficiencyType.Shields))
                 shieldBonus = shield.ArmorClassBonus;
         }
 

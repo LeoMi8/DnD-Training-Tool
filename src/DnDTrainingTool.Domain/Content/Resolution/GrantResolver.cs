@@ -94,6 +94,12 @@ public sealed class GrantResolver
             var classDefinition =
                 _registry.Get<ClassDefinition>(group.Key);
 
+            var entryGrants = group.Key == build.Progression.InitialClassId
+                ? classDefinition.InitialClassGrants
+                : classDefinition.MulticlassEntryGrants;
+
+            AddGrants(results, classDefinition.Id, 1, entryGrants);
+
             for (int level = 1; level <= group.Count(); level++)
             {
                 var levelDefinition =
