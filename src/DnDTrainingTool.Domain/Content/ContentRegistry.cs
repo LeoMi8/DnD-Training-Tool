@@ -1,7 +1,7 @@
 using DnDTrainingTool.Domain.Content.Definitions;
 using DnDTrainingTool.Domain.Content.Identifiers;
 
-namespace DndTrainingTool.Domain.Content;
+namespace DnDTrainingTool.Domain.Content;
 
 public sealed class ContentRegistry
 {

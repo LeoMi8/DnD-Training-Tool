@@ -1,7 +1,6 @@
 
-using DndTrainingTool.Domain.Content;
-using DnDTrainingTool.Domain.Characters.Progression;
 using DnDTrainingTool.Domain.Content;
+using DnDTrainingTool.Domain.Characters.Progression;
 using DnDTrainingTool.Domain.Content.Definitions;
 using DnDTrainingTool.Domain.Content.Identifiers;
 using DnDTrainingTool.Domain.Content.Resolution;

@@ -1,5 +1,4 @@
 
-using DndTrainingTool.Domain.Content;
 using DnDTrainingTool.Domain.Characters.Progression;
 using DnDTrainingTool.Domain.Content;
 using DnDTrainingTool.Domain.Content.Definitions;

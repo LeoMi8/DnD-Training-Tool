@@ -3,7 +3,7 @@ using DnDTrainingTool.Domain.Characters.Equipment;
 using DnDTrainingTool.Domain.Content.Definitions;
 using DnDTrainingTool.Domain.Content.Identifiers;
 using Xunit;
-using DndTrainingTool.Domain.Content;
+using DnDTrainingTool.Domain.Content;
 
 namespace DnDTrainingTool.Tests.Content;
 
